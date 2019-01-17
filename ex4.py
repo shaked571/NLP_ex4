@@ -20,7 +20,8 @@ def main():
     log.info("work")
     Global.SourceIPAddress = '127.0.0.1'
     log.info("Dont log")
-    print("ss")
+
 
 if __name__ == '__main__':
     main()
+
