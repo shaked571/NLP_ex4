@@ -15,8 +15,21 @@ def main():
     nlp_model = spacy.load('en')
     page = wikipedia.page('Brad Pitt').content
     analyzed_page = nlp_model(page)
-    doc = nlp_model(u"AMZN achieved a very big profit in Q3 2017, we believe it would increase in the upcoming years")
-    logger.info([(w.text, w.pos_) for w in doc])
+    consecutive_propn = find_consecutive_propn(analyzed_page)
+    print(consecutive_propn)
+
+
+def find_consecutive_propn(analyzed_page):
+    proper_nouns_list = set()
+    last_pos = analyzed_page[0].pos_
+    last_word = analyzed_page[0].text
+    for word in analyzed_page:
+        current_pos = word.pos_
+        current_word = word.text
+        if last_pos == "PROPN" and current_pos == "PROPN":
+            proper_nouns_list.add(last_word)
+            proper_nouns_list.add(current_word)
+    return proper_nouns_list
 
 
 if __name__ == '__main__':
