@@ -4,6 +4,7 @@ import spacy
 import datetime
 from spacy import tokens
 PROPN = "PROPN"
+COMPOUND = "compound"
 
 time = datetime.datetime.now()
 logging.basicConfig(filename=f"logs\\ex4_{time.strftime('%d_%H_%M_%S')}.log", level=logging.INFO,
@@ -18,6 +19,10 @@ def main():
     logger.info(f"the type is: {type(analyzed_page)}")
     consecutive_propn = find_consecutive_propn(analyzed_page)
     print(consecutive_propn)
+    # example = "John Jerome Smith likes Mary"
+    # model = nlp_model(example)
+    heads = find_propn_heads(analyzed_page)
+    print(heads)
 
 
 def find_consecutive_propn(analyzed_page: tokens.doc.Doc) ->list:
@@ -36,6 +41,14 @@ def find_consecutive_propn(analyzed_page: tokens.doc.Doc) ->list:
                 sequences.append(current_sequence)
             is_consecutive_sequence = False
     return sequences
+
+
+def find_propn_heads(analyzed_page: tokens.doc.Doc) -> list:
+    heads = list()
+    for word in analyzed_page:
+        if word.pos_ == PROPN and word.dep_ != COMPOUND:
+            heads.append(word)
+    return heads
 
 
 def find_consecutive_nouns(analyzed_page: tokens.doc.Doc) ->set:
