@@ -1,4 +1,6 @@
 import logging
+from typing import List, Any
+import copy
 import wikipedia
 import spacy
 import datetime
@@ -42,13 +44,49 @@ def main():
     get_result_for_page(j_k_rowling_page)
 
 
+class TripleRes:
+
+    def __init__(self):
+        self.subject = list()
+        self.relation = list()
+        self.object = list()
+        self.is_verb_exist = False
+        self.last_pos_propn = False
+        self.to_init = False
+
+    def __repr__(self):
+        return "{Subject: " + str(self.subject) + ", Relation: " + str(self.relation) + ", Object: " + str(
+            self.object) + "}"
+
+    def is_valid(self):
+        return len(self.subject) > 0 and len(self.relation) > 0 and len(self.object) > 0 and self.is_verb_exist
+
+    def add_propn(self, word):
+        self.last_pos_propn = True
+        if len(self.relation) == 0:
+            self.subject.append(word)
+        else:
+            self.object.append(word)
+        if  len(self.subject) > 0 and  len(self.object) > 0 and  not self.is_verb_exist:
+            self.to_init = True
+
+
+    def add_verb_or_adp(self, word):
+        self.last_pos_propn = False
+        if len(self.subject) > 0 and len(self.object) == 0:
+            if word.pos_ == VERB:
+                self.is_verb_exist = True
+            self.relation.append(word)
+
+
 def get_result_for_page(wiki_page):
     nlp_model = spacy.load('en')
     analyzed_wiki_page = nlp_model(wiki_page)
     logger.info(f"\nOriginal text analyzed:\n")
     logger.info(([(w.text, w.pos_) for w in analyzed_wiki_page]))
     pos_base_consecutive = find_consecutive_nouns_pairs(analyzed_wiki_page)
-    dep_tree_base_consecutive = find_consecutive_pairs_dependency_tree(find_heads_sets(find_propn_heads(analyzed_wiki_page)))
+    dep_tree_base_consecutive = find_consecutive_pairs_dependency_tree(
+        find_heads_sets(find_propn_heads(analyzed_wiki_page)))
     logger.info(f"Triple num for POS base extractor is : {len(pos_base_consecutive)}")
     logger.info(f"Triple num for dependency trees base extractor is : {len(dep_tree_base_consecutive)}")
 
@@ -58,22 +96,6 @@ def get_result_for_page(wiki_page):
     logger.info(dep_tree_base_consecutive)
 
 
-def find_consecutive_propn(analyzed_page: tokens.doc.Doc) ->list:
-    current_sequence = list()
-    sequences = list()
-    is_consecutive_sequence = False
-    for word in analyzed_page:
-        current_pos = word.pos_
-        if current_pos == PROPN:
-            if not is_consecutive_sequence:
-                current_sequence = list()
-            current_sequence.append(word)
-            is_consecutive_sequence = True
-        else:
-            if is_consecutive_sequence:
-                sequences.append(current_sequence)
-            is_consecutive_sequence = False
-    return sequences
 
 
 def find_propn_heads(analyzed_page: tokens.doc.Doc) -> list:
@@ -85,7 +107,7 @@ def find_propn_heads(analyzed_page: tokens.doc.Doc) -> list:
     return heads
 
 
-def find_heads_sets(heads: list) ->dict:
+def find_heads_sets(heads: list) -> dict:
     heads_sets = dict()
     for h in heads:
         heads_sets[h] = set()
@@ -96,7 +118,7 @@ def find_heads_sets(heads: list) ->dict:
     return heads_sets
 
 
-def find_consecutive_pairs_dependency_tree(heads_sets_dict: dict)->list:
+def find_consecutive_pairs_dependency_tree(heads_sets_dict: dict) -> list:
     triples = list()
     for h1, h2 in permutations(heads_sets_dict, 2):
         if h1.dep_ == NOMINAL_SUBJECT:
@@ -112,36 +134,45 @@ def find_consecutive_pairs_dependency_tree(heads_sets_dict: dict)->list:
 
 def find_consecutive_nouns_pairs(analyzed_page: tokens.doc.Doc) -> list:
     proper_nouns_pairs = list()
-    candidate_words = list()
-    is_verb_exist = False
-    relation_words = set()
+    curr_triple = TripleRes()
+
     for word in analyzed_page:
         current_pos = word.pos_
+        if curr_triple.last_pos_propn and curr_triple.is_valid() and current_pos != PROPN:
+            proper_nouns_pairs.append(curr_triple)
+            old_triple_object = copy.copy(curr_triple.object)
+            curr_triple = TripleRes()
+            curr_triple.subject = old_triple_object
         if current_pos == PROPN:
-            if len(candidate_words) > 0 and is_verb_exist:
-                proper_nouns_pairs.append((candidate_words, relation_words, word))
-                is_verb_exist = False
-                candidate_words = list()
-            candidate_words.append(word)
-            relation_words = set()
+            curr_triple.add_propn(word)
+            if curr_triple.to_init:
+                curr_triple = TripleRes()
+                curr_triple.add_propn(word)
+        elif current_pos in [VERB, ADP]:
+            curr_triple.add_verb_or_adp(word)
         elif current_pos == PUNCT:
-            candidate_words = list()
-            is_verb_exist = False
-            relation_words = set()
-        elif current_pos == VERB:
-            relation_words.add(word)
-            is_verb_exist = True
-        elif current_pos == ADP:
-            relation_words.add(word)
+            if curr_triple.is_valid():
+                proper_nouns_pairs.append(curr_triple)
+            curr_triple = TripleRes()
         else:
-            continue
+            curr_triple.last_pos_propn = False
+
+
+
     return proper_nouns_pairs
 
+
 def test_S():
-    heads_sets_dict = {"s":[1,2,3], "dd":[4,5,6]}
-    for h, h2 in permutations(heads_sets_dict):
-        print(h)
-        print(h2)
+    t = TripleRes()
+    t.object.append("o")
+    t.relation.append("r")
+    t.subject.append("s")
+    t.subject.append("s2")
+    k = list()
+    k.append(t)
+    k.append(t)
+    print(1 == 2 or 3)
+
 
 if __name__ == '__main__':
     # test_S()
