@@ -1,16 +1,16 @@
 import logging
-from typing import List, Any
+from typing import List
 import copy
 import wikipedia
 import spacy
 import datetime
 from spacy import tokens
 from itertools import permutations
+import random
 
 time = datetime.datetime.now()
 
 ADP = 'ADP'
-
 PREPOSOTIONAL_OBJ = 'pobj'
 PREPOSITION = 'prep'
 DIRECT_OBJECT = "dobj"
@@ -20,13 +20,15 @@ PROPN = "PROPN"
 VERB = "VERB"
 COMPOUND = "compound"
 
+
+########################################################################################################################
+#  Logger
 logger = logging.getLogger('myLogger')
 logger.setLevel(logging.INFO)
-
 fh = logging.FileHandler(filename=f"logs\\ex4_{time.strftime('%d_%H_%M_%S')}.log", mode="w", encoding="utf-8")
 logger.addHandler(fh)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
+########################################################################################################################
 
 def main():
     donald_trump_page = wikipedia.page('Donald Trump').content
@@ -44,7 +46,12 @@ def main():
     get_result_for_page(j_k_rowling_page)
 
 
+########################################################################################################################
+#  Classes
 class TripleRes:
+    subject: List[tokens.token.Token]
+    relation: List[tokens.token.Token]
+    object: List[tokens.token.Token]
 
     def __init__(self):
         self.subject = list()
@@ -67,9 +74,8 @@ class TripleRes:
             self.subject.append(word)
         else:
             self.object.append(word)
-        if  len(self.subject) > 0 and  len(self.object) > 0 and  not self.is_verb_exist:
+        if len(self.subject) > 0 and len(self.object) > 0 and not self.is_verb_exist:
             self.to_init = True
-
 
     def add_verb_or_adp(self, word):
         self.last_pos_propn = False
@@ -78,6 +84,10 @@ class TripleRes:
                 self.is_verb_exist = True
             self.relation.append(word)
 
+########################################################################################################################
+
+########################################################################################################################
+#  function
 
 def get_result_for_page(wiki_page):
     nlp_model = spacy.load('en')
@@ -89,13 +99,16 @@ def get_result_for_page(wiki_page):
         find_heads_sets(find_propn_heads(analyzed_wiki_page)))
     logger.info(f"Triple num for POS base extractor is : {len(pos_base_consecutive)}")
     logger.info(f"Triple num for dependency trees base extractor is : {len(dep_tree_base_consecutive)}")
-
     logger.info(f"\nFull result of POS base are:\n")
     logger.info(pos_base_consecutive)
     logger.info(f"\nFull result of dependency trees are:\n")
     logger.info(dep_tree_base_consecutive)
-
-
+    random_triple_pos = random.choices(pos_base_consecutive, k=5)
+    logger.info("five random triplets for pos")
+    logger.info(random_triple_pos)
+    random_triple_dep_tree = random.choices(dep_tree_base_consecutive, k=5)
+    logger.info("five random triplets for Dependency tree")
+    logger.info(random_triple_dep_tree)
 
 
 def find_propn_heads(analyzed_page: tokens.doc.Doc) -> list:
@@ -157,23 +170,9 @@ def find_consecutive_nouns_pairs(analyzed_page: tokens.doc.Doc) -> list:
         else:
             curr_triple.last_pos_propn = False
 
-
-
     return proper_nouns_pairs
-
-
-def test_S():
-    t = TripleRes()
-    t.object.append("o")
-    t.relation.append("r")
-    t.subject.append("s")
-    t.subject.append("s2")
-    k = list()
-    k.append(t)
-    k.append(t)
-    print(1 == 2 or 3)
+########################################################################################################################
 
 
 if __name__ == '__main__':
-    # test_S()
     main()
