@@ -5,64 +5,57 @@ import datetime
 from spacy import tokens
 from itertools import permutations
 
+time = datetime.datetime.now()
+
 ADP = 'ADP'
 
 PREPOSOTIONAL_OBJ = 'pobj'
-
 PREPOSITION = 'prep'
-
 DIRECT_OBJECT = "dobj"
-
 NOMINAL_SUBJECT = 'nsubj'
 PUNCT = "PUNCT"
 PROPN = "PROPN"
 VERB = "VERB"
 COMPOUND = "compound"
 
-
-time = datetime.datetime.now()
-logging.basicConfig(filename=f"logs\\ex4_{time.strftime('%d_%H_%M_%S')}.log", level=logging.INFO,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('myLogger')
+logger.setLevel(logging.INFO)
+
+fh = logging.FileHandler(filename=f"logs\\ex4_{time.strftime('%d_%H_%M_%S')}.log", mode="w", encoding="utf-8")
+logger.addHandler(fh)
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
 def main():
-    nlp_model = spacy.load('en')
     donald_trump_page = wikipedia.page('Donald Trump').content
     ruth_bader_page = wikipedia.page('Ruth Bader Ginsburg').content
     j_k_rowling_page = wikipedia.page('J. K. Rowling').content
 
+    logger.info("-----------------------------------------------------------------------------------------------------")
+    logger.info('Donald Trump')
+    get_result_for_page(donald_trump_page)
+    logger.info("-----------------------------------------------------------------------------------------------------")
+    logger.info('Ruth Bader Ginsburg')
+    get_result_for_page(ruth_bader_page)
+    logger.info("-----------------------------------------------------------------------------------------------------")
+    logger.info('J. K. Rowling')
+    get_result_for_page(j_k_rowling_page)
 
 
-
-    analyzed_ruth_bader_page = nlp_model(ruth_bader_page)
-    analyzed_j_k_rowling_page = nlp_model(j_k_rowling_page)
-    get_result_for_page(donald_trump_page, nlp_model)
-
-    # logger.info(([(w.text, w.pos_) for w in doc4]))
-    # logger.info(find_consecutive_nouns_pairs(doc4))
-    # logger.info(([(w.text, w.pos_) for w in doc5]))
-    # logger.info(find_consecutive_nouns_pairs(doc5))
-    # logger.info(f"the type is: {type(analyzed_page)}")
-    # consecutive_propn = find_consecutive_propn(analyzed_page)
-    # print(consecutive_propn)
-    # example = "John Jerome Smith likes Mary"
-    # model = nlp_model(example)
-    # heads = find_propn_heads(doc2)
-    # logger.info(doc2)
-    # logger.info([(w.text, w.pos_) for w in doc2])
-    # logger.info(find_heads_sets(heads))
-    # heads = find_propn_heads(doc)
-    # logger.info(doc)
-    # logger.info([(w.text, w.pos_) for w in doc])
-    # logger.info(find_heads_sets(heads))
-
-
-def get_result_for_page(wiki_page, nlp_model):
+def get_result_for_page(wiki_page):
+    nlp_model = spacy.load('en')
     analyzed_wiki_page = nlp_model(wiki_page)
+    logger.info(f"\nOriginal text analyzed:\n")
     logger.info(([(w.text, w.pos_) for w in analyzed_wiki_page]))
-    consecutive = find_consecutive_nouns_pairs(analyzed_wiki_page)
-    logger.info(find_consecutive_nouns_pairs(analyzed_wiki_page))
+    pos_base_consecutive = find_consecutive_nouns_pairs(analyzed_wiki_page)
+    dep_tree_base_consecutive = find_consecutive_pairs_dependency_tree(find_heads_sets(find_propn_heads(analyzed_wiki_page)))
+    logger.info(f"Triple num for POS base extractor is : {len(pos_base_consecutive)}")
+    logger.info(f"Triple num for dependency trees base extractor is : {len(dep_tree_base_consecutive)}")
+
+    logger.info(f"\nFull result of POS base are:\n")
+    logger.info(pos_base_consecutive)
+    logger.info(f"\nFull result of dependency trees are:\n")
+    logger.info(dep_tree_base_consecutive)
 
 
 def find_consecutive_propn(analyzed_page: tokens.doc.Doc) ->list:
@@ -103,16 +96,17 @@ def find_heads_sets(heads: list) ->dict:
     return heads_sets
 
 
-def find_consecutive_nouns_pairs_dependency_tree(heads_sets: dict)->list:
+def find_consecutive_pairs_dependency_tree(heads_sets_dict: dict)->list:
     triples = list()
-    for h1, h2 in permutations(heads_sets):
+    for h1, h2 in permutations(heads_sets_dict, 2):
         if h1.dep_ == NOMINAL_SUBJECT:
             if h1.head == h2.head and h2.dep_ == DIRECT_OBJECT:
-                triples.append((h1, set(h1.head), h2))
+                triples.append((h1, [h1.head], h2))
             elif h1.head == h2.head.head and h2.head.dep_ == PREPOSITION and h2.dep_ == PREPOSOTIONAL_OBJ:
-                concat = set(h1.head)
-                concat.add(h2.head)
+                concat = [h1.head, h2.head]
                 triples.append((h1, concat, h2))
+            else:
+                continue
     return triples
 
 
@@ -143,6 +137,12 @@ def find_consecutive_nouns_pairs(analyzed_page: tokens.doc.Doc) -> list:
             continue
     return proper_nouns_pairs
 
+def test_S():
+    heads_sets_dict = {"s":[1,2,3], "dd":[4,5,6]}
+    for h, h2 in permutations(heads_sets_dict):
+        print(h)
+        print(h2)
 
 if __name__ == '__main__':
+    # test_S()
     main()
